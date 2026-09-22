@@ -1,0 +1,6 @@
+# Build output
+task-cli
+task-cli.exe
+
+# Runtime data
+tasks.json
