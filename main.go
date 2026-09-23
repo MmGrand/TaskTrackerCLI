@@ -62,7 +62,7 @@ func Save(name string, tasks []Task) error {
 		tasks = []Task{}
 	}
 
-	data, err := json.Marshal(tasks)
+	data, err := json.MarshalIndent(tasks, "", "  ")
 	if err != nil {
 		return fmt.Errorf("serialize: %w", err)
 	}
