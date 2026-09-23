@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -205,7 +206,7 @@ func Filter(tasks []Task, status Status) []Task {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		usage()
+		usage(os.Stderr)
 		return errors.New("no command given")
 	}
 	command, rest := args[0], args[1:]
@@ -223,8 +224,11 @@ func run(args []string) error {
 		return cmdMark(rest, Done)
 	case "list":
 		return cmdList(rest)
+	case "help", "-h", "--help":
+		usage(os.Stdout)
+		return nil
 	default:
-		usage()
+		usage(os.Stderr)
 		return fmt.Errorf("unknown command %q", command)
 	}
 }
@@ -365,8 +369,8 @@ func parseID(s string) (int, error) {
 	return id, nil
 }
 
-func usage() {
-	fmt.Fprintln(os.Stderr, `Usage: task-cli <command> [arguments]
+func usage(w io.Writer) {
+	fmt.Fprintln(w, `Usage: task-cli <command> [arguments]
 
 Commands:
   add <description>          add a new task
@@ -374,7 +378,8 @@ Commands:
   delete <id>                remove a task
   mark-in-progress <id>      set status to in-progress
   mark-done <id>             set status to done
-  list [status]              list tasks (status: todo, in-progress, done)`)
+  list [status]              list tasks (status: todo, in-progress, done)
+  help                       show this help`)
 }
 
 func main() {
