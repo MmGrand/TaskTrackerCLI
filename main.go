@@ -229,26 +229,37 @@ func run(args []string) error {
 	}
 }
 
-func cmdAdd(args []string) error {
-	if len(args) != 1 {
-		return errors.New("usage: task-cli add <description>")
-	}
-
+func mutate(fn func([]Task) ([]Task, error)) error {
 	tasks, err := Load(FileName)
 	if err != nil {
 		return err
 	}
 
-	tasks, task, err := Add(tasks, args[0])
+	tasks, err = fn(tasks)
 	if err != nil {
 		return err
 	}
 
-	if err := Save(FileName, tasks); err != nil {
+	return Save(FileName, tasks)
+}
+
+func cmdAdd(args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: task-cli add <description>")
+	}
+
+	var added Task
+
+	err := mutate(func(tasks []Task) ([]Task, error) {
+		var err error
+		tasks, added, err = Add(tasks, args[0])
+		return tasks, err
+	})
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Task added successfully (ID: %d)\n", task.ID)
+	fmt.Printf("Task added successfully (ID: %d)\n", added.ID)
 	return nil
 }
 
@@ -262,17 +273,10 @@ func cmdUpdate(args []string) error {
 		return err
 	}
 
-	tasks, err := Load(FileName)
+	err = mutate(func(tasks []Task) ([]Task, error) {
+		return tasks, Update(tasks, id, args[1])
+	})
 	if err != nil {
-		return err
-	}
-
-	err = Update(tasks, id, args[1])
-	if err != nil {
-		return err
-	}
-
-	if err := Save(FileName, tasks); err != nil {
 		return err
 	}
 
@@ -290,17 +294,10 @@ func cmdDelete(args []string) error {
 		return err
 	}
 
-	tasks, err := Load(FileName)
+	err = mutate(func(tasks []Task) ([]Task, error) {
+		return Delete(tasks, id)
+	})
 	if err != nil {
-		return err
-	}
-
-	tasks, err = Delete(tasks, id)
-	if err != nil {
-		return err
-	}
-
-	if err := Save(FileName, tasks); err != nil {
 		return err
 	}
 
@@ -318,17 +315,10 @@ func cmdMark(args []string, status Status) error {
 		return err
 	}
 
-	tasks, err := Load(FileName)
+	err = mutate(func(tasks []Task) ([]Task, error) {
+		return tasks, SetStatus(tasks, id, status)
+	})
 	if err != nil {
-		return err
-	}
-
-	err = SetStatus(tasks, id, status)
-	if err != nil {
-		return err
-	}
-
-	if err := Save(FileName, tasks); err != nil {
 		return err
 	}
 
