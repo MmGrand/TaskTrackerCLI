@@ -6,9 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+)
+
+var (
+	ErrNotFound         = errors.New("task not found")
+	ErrEmptyDescription = errors.New("description is empty")
 )
 
 type Status string
@@ -92,20 +98,22 @@ func NextID(tasks []Task) int {
 	return maxID + 1
 }
 
-func IndexByID(tasks []Task, id int) int {
-	for i, task := range tasks {
-		if task.ID == id {
-			return i
-		}
+func find(tasks []Task, id int) (int, error) {
+	i := slices.IndexFunc(tasks, func(task Task) bool {
+		return task.ID == id
+	})
+
+	if i == -1 {
+		return -1, fmt.Errorf("task %d: %w", id, ErrNotFound)
 	}
 
-	return -1
+	return i, nil
 }
 
 func Add(tasks []Task, description string) ([]Task, Task, error) {
 	description = strings.TrimSpace(description)
 	if description == "" {
-		return tasks, Task{}, errors.New("description is empty")
+		return tasks, Task{}, ErrEmptyDescription
 	}
 
 	now := time.Now()
@@ -123,14 +131,14 @@ func Add(tasks []Task, description string) ([]Task, Task, error) {
 }
 
 func Update(tasks []Task, id int, description string) error {
-	taskIndex := IndexByID(tasks, id)
-	if taskIndex == -1 {
-		return fmt.Errorf("task with id %d not found", id)
+	taskIndex, err := find(tasks, id)
+	if err != nil {
+		return err
 	}
 
 	description = strings.TrimSpace(description)
 	if description == "" {
-		return errors.New("description is empty")
+		return ErrEmptyDescription
 	}
 
 	tasks[taskIndex].Description = description
@@ -140,20 +148,18 @@ func Update(tasks []Task, id int, description string) error {
 }
 
 func Delete(tasks []Task, id int) ([]Task, error) {
-	taskIndex := IndexByID(tasks, id)
-	if taskIndex == -1 {
-		return tasks, fmt.Errorf("task with id %d not found", id)
+	taskIndex, err := find(tasks, id)
+	if err != nil {
+		return tasks, err
 	}
 
-	result := append(tasks[:taskIndex], tasks[taskIndex+1:]...)
-
-	return result, nil
+	return slices.Delete(tasks, taskIndex, taskIndex+1), nil
 }
 
 func SetStatus(tasks []Task, id int, status Status) error {
-	taskIndex := IndexByID(tasks, id)
-	if taskIndex == -1 {
-		return fmt.Errorf("task with id %d not found", id)
+	taskIndex, err := find(tasks, id)
+	if err != nil {
+		return err
 	}
 
 	tasks[taskIndex].Status = status
