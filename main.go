@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -68,13 +69,36 @@ func Save(name string, tasks []Task) error {
 		tasks = []Task{}
 	}
 
-	data, err := json.MarshalIndent(tasks, "", "  ")
+	tmp, err := os.CreateTemp(filepath.Dir(name), "tasks-*.tmp")
 	if err != nil {
-		return fmt.Errorf("serialize: %w", err)
+		return fmt.Errorf("create temp file: %w", err)
 	}
 
-	if err := os.WriteFile(name, data, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", name, err)
+	defer func() {
+		tmp.Close()
+		os.Remove(tmp.Name())
+	}()
+
+	if err := tmp.Chmod(0644); err != nil {
+		return fmt.Errorf("chmod %s: %w", tmp.Name(), err)
+	}
+
+	enc := json.NewEncoder(tmp)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(tasks); err != nil {
+		return fmt.Errorf("write %s: %w", tmp.Name(), err)
+	}
+
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("sync %s: %w", tmp.Name(), err)
+	}
+
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close %s: %w", tmp.Name(), err)
+	}
+
+	if err := os.Rename(tmp.Name(), name); err != nil {
+		return fmt.Errorf("replace %s: %w", name, err)
 	}
 
 	return nil
