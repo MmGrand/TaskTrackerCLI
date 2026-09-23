@@ -17,6 +17,7 @@ import (
 var (
 	ErrNotFound         = errors.New("task not found")
 	ErrEmptyDescription = errors.New("description is empty")
+	ErrUsage            = errors.New("usage")
 )
 
 type Status string
@@ -207,7 +208,7 @@ func Filter(tasks []Task, status Status) []Task {
 func run(args []string) error {
 	if len(args) == 0 {
 		usage(os.Stderr)
-		return errors.New("no command given")
+		return fmt.Errorf("%w: no command given", ErrUsage)
 	}
 	command, rest := args[0], args[1:]
 
@@ -229,7 +230,7 @@ func run(args []string) error {
 		return nil
 	default:
 		usage(os.Stderr)
-		return fmt.Errorf("unknown command %q", command)
+		return fmt.Errorf("%w: unknown command %q", ErrUsage, command)
 	}
 }
 
@@ -249,7 +250,7 @@ func mutate(fn func([]Task) ([]Task, error)) error {
 
 func cmdAdd(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: task-cli add <description>")
+		return fmt.Errorf("%w: task-cli add <description>", ErrUsage)
 	}
 
 	var added Task
@@ -269,7 +270,7 @@ func cmdAdd(args []string) error {
 
 func cmdUpdate(args []string) error {
 	if len(args) != 2 {
-		return errors.New("usage: task-cli update <id> <description>")
+		return fmt.Errorf("%w: task-cli update <id> <description>", ErrUsage)
 	}
 
 	id, err := parseID(args[0])
@@ -290,7 +291,7 @@ func cmdUpdate(args []string) error {
 
 func cmdDelete(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: task-cli delete <id>")
+		return fmt.Errorf("%w: task-cli delete <id>", ErrUsage)
 	}
 
 	id, err := parseID(args[0])
@@ -311,7 +312,7 @@ func cmdDelete(args []string) error {
 
 func cmdMark(args []string, status Status) error {
 	if len(args) != 1 {
-		return errors.New("usage: task-cli mark-done|mark-in-progress <id>")
+		return fmt.Errorf("%w: task-cli mark-done|mark-in-progress <id>", ErrUsage)
 	}
 
 	id, err := parseID(args[0])
@@ -332,7 +333,7 @@ func cmdMark(args []string, status Status) error {
 
 func cmdList(args []string) error {
 	if len(args) > 1 {
-		return errors.New("usage: task-cli list [todo|in-progress|done]")
+		return fmt.Errorf("%w: task-cli list [todo|in-progress|done]", ErrUsage)
 	}
 
 	tasks, err := Load(FileName)
@@ -385,6 +386,9 @@ Commands:
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
+		if errors.Is(err, ErrUsage) {
+			os.Exit(2)
+		}
 		os.Exit(1)
 	}
 }
